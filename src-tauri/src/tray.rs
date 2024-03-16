@@ -8,13 +8,16 @@ use crate::UPDATE_RESULT;
 use chrono::{DateTime, Utc};
 use chrono_tz::{Tz, TZ_VARIANTS};
 use crate::windows::{
-    show_updater_window, get_settings_window,
+    show_updater_window,
     SETTINGS_WIN_NAME
 };
 use std::thread;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::str::FromStr;
+use crate::config::{get_config, set_config_content, Config};
+
+// const tray_time_zone: &str = "America/New_York";
 
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     // let config = get_config().unwrap();
@@ -51,32 +54,6 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
 
     let tray = app.tray().expect("Failed to create tray icon");
     tray.set_menu(Some(menu.clone()))?;
-    // tray.on_menu_event(move |app, event| match event.id.as_ref() {
-    //     "check_for_updates" => {
-    //         show_updater_window();
-    //     }
-    //     // TZ_VARIANTS[0] => {
-    //     //     // get_settings_window();
-    //     //     println!("click")
-    //     // }
-    //     TZ_VARIANTS => {
-
-    //     }
-    //     "show" => {
-    //         let window = app.get_webview_window(SETTINGS_WIN_NAME).unwrap();
-    //         window.set_focus().unwrap();
-    //         window.unminimize().unwrap();
-    //         window.show().unwrap();
-    //     }
-    //     "hide" => {
-    //         let window = app.get_webview_window(SETTINGS_WIN_NAME).unwrap();
-    //         window.set_focus().unwrap();
-    //         window.unminimize().unwrap();
-    //         window.hide().unwrap();
-    //     }
-    //     "quit" => app.exit(0),
-    //     _ => {}
-    // });
     tray.on_menu_event(move|app, event| {
         // println!("event: {}", event.id.as_ref());
         let id_str = event.id.as_ref();
@@ -96,7 +73,34 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
         } else if id_str == "quit" {
             app.exit(0);
         } else if TZ_VARIANTS.contains(&id_tz) {
-            println!("TZ: {}", id_str);
+            let old_config = match get_config() {
+                Ok(config) => config,
+                Err(e) => {
+                    println!("failed to get config: {}", e);
+                    Config {
+                        time_zone: None
+                    }
+                }
+            };
+            let old_time_zone = match old_config.time_zone {
+                Some(time_zone) => time_zone,
+                None => "".to_string()
+            };
+            if old_time_zone == id_str {
+                return;
+            }
+
+            let new_config = Config {
+                time_zone: Some(id_str.to_string()),
+            };
+            let now = Utc::now();
+            let time_zone = Tz::from_str(&id_str).unwrap();
+            let now = now.with_timezone(&time_zone);
+            let format_time = now.format("%m-%d %H:%M");
+            let _ = app.tray().unwrap().set_title(Some(format_time.to_string()));
+            if let Err(e) = set_config_content(app, new_config) {
+                println!("set config failed: {}", e);
+            }
         }
     });
     tray.on_tray_icon_event(|tray, event| {
@@ -118,20 +122,39 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
+fn update_time_zone<R: Runtime>(tray: Arc<Mutex<TrayIcon<R>>>) {
+    // Get the current time
+    let now = Utc::now();
+    let config = get_config();
+    let config = match config {
+        Ok(config) => config,
+        Err(e) => {
+            println!("failed to get config: {}", e);
+            Config {
+                time_zone: None
+            }
+        }
+    };
+    let time_zone = match config.time_zone {
+        Some(time_zone) => time_zone,
+        None => "".to_string()
+    };
+    let time_zone = Tz::from_str(&time_zone).unwrap();
+    let now = now.with_timezone(&time_zone);
+    // let new_york_time: DateTime<Tz> = now.with_timezone(&Tz::America__New_York);
+    let format_time = now.format("%m-%d %H:%M");
+
+    // Lock the tray icon and update the title
+    let locked_tray = tray.lock().unwrap();
+    let _ = locked_tray.set_title(Some(format_time.to_string()));
+}
+
 fn tray_update<R: Runtime>(tray: Arc<Mutex<TrayIcon<R>>>) {
     thread::spawn(move || {
         loop {
-            // Get the current time
-            let now = Utc::now();
-            let new_york_time: DateTime<Tz> = now.with_timezone(&Tz::America__New_York);
-            let format_time = new_york_time.format("%m-%d %H:%M");
-
-            // Lock the tray icon and update the title
-            let locked_tray = tray.lock().unwrap();
-            let _ = locked_tray.set_title(Some(format_time.to_string()));
-
-            // Sleep for 60 seconds
-            thread::sleep(Duration::from_secs(60));
+            update_time_zone(tray.clone());
+            // Sleep for 2 seconds
+            thread::sleep(Duration::from_secs(2));
         }
     });
 }

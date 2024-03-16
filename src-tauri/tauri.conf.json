@@ -8,6 +8,18 @@
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
+  "plugins": {
+    "fs": {
+      "scope": {
+        "allow": [
+          "**",
+          "$CONFIG/*/**",
+          "$APPCONFIG/**",
+          "$APPCACHE/**"
+        ]
+      }
+    }
+  },
   "app": {
     "windows": [
       {
@@ -17,7 +29,13 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$CACHE/**", "$CONFIG/**", "$APPCACHE/**"
+        ]
+      }
     },
     "trayIcon": {
       "iconPath": "icons/tray-icon.png",
