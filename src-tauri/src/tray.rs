@@ -57,7 +57,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     tray.on_menu_event(move|app, event| {
         // println!("event: {}", event.id.as_ref());
         let id_str = event.id.as_ref();
-        let id_tz = Tz::from_str(&id_str).unwrap();
+        println!("id_str: {}", id_str);
         if id_str == "check_for_updates" {
             show_updater_window();
         } else if id_str == "show" {
@@ -72,7 +72,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             window.hide().unwrap();
         } else if id_str == "quit" {
             app.exit(0);
-        } else if TZ_VARIANTS.contains(&id_tz) {
+        } else if TZ_VARIANTS.contains(&Tz::from_str(&id_str).unwrap()) {
             let old_config = match get_config() {
                 Ok(config) => config,
                 Err(e) => {
