@@ -4,6 +4,7 @@
 mod tray;
 mod windows;
 mod utils;
+mod config;
 
 use parking_lot::Mutex;
 // use serde_json::json;
