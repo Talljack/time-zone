@@ -8,7 +8,7 @@ use tauri_plugin_updater::UpdaterExt;
 use cocoa::appkit::NSWindow;
 
 pub const SETTINGS_WIN_NAME: &str = "setting_win_name";
-pub const UPDATER_WIN_NAME: &str = "update_win_name";
+pub const UPDATER_WIN_NAME: &str = "updater";
 
 pub fn post_process_window<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     window.set_visible_on_all_workspaces(true).unwrap();

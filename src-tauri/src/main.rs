@@ -9,7 +9,7 @@ mod config;
 use parking_lot::Mutex;
 // use serde_json::json;
 use once_cell::sync::OnceCell;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 pub static APP_HANDLE: OnceCell<AppHandle> = OnceCell::new();
 
@@ -36,6 +36,8 @@ fn get_update_result() -> (bool, Option<UpdateResult>) {
 fn main() {
     tauri::Builder::default()
         .setup(move |app| {
+            let main_window = app.get_webview_window("main").unwrap();
+            main_window.hide().unwrap();
             let app_handle = app.handle();
             APP_HANDLE.get_or_init(|| app.handle().clone());
             tray::create_tray(&app_handle)?;
