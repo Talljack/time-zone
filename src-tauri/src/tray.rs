@@ -1,25 +1,24 @@
+use crate::config::{get_config, set_config_content, Config};
+use crate::windows::{show_updater_window, SETTINGS_WIN_NAME};
+use crate::UPDATE_RESULT;
+use chrono::{DateTime, Utc};
+use chrono_tz::{Tz, TZ_VARIANTS};
+use serde::de::value::Error;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+use tauri::Manager;
 use tauri::{
     menu::{Menu, MenuItem, Submenu},
     tray::{ClickType, TrayIcon},
     Runtime,
 };
-use tauri::Manager;
-use crate::UPDATE_RESULT;
-use chrono::{DateTime, Utc};
-use chrono_tz::{Tz, TZ_VARIANTS};
-use crate::windows::{
-    show_updater_window,
-    SETTINGS_WIN_NAME
-};
-use std::thread;
-use std::time::Duration;
-use std::sync::{Arc, Mutex};
-use std::str::FromStr;
-use crate::config::{get_config, set_config_content, Config};
 
 // const tray_time_zone: &str = "America/New_York";
 
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    let time_zone = get_time_zone();
     // let config = get_config().unwrap();
     let check_for_updates_i = MenuItem::with_id(
         app,
@@ -34,6 +33,17 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             .unwrap();
     }
     let sub_setting_i = Submenu::with_items(app, "Settings", true, &[])?;
+    // checked time_zone stick on the top
+    if TZ_VARIANTS.contains(&time_zone) {
+        let sub_item = MenuItem::with_id(
+            app,
+            time_zone,
+            format!("✅ {}", time_zone.to_string()),
+            true,
+            None::<String>,
+        )?;
+        let _ = sub_setting_i.append(&sub_item);
+    }
     for item in TZ_VARIANTS {
         let sub_item = MenuItem::with_id(app, item, item.to_string(), true, None::<String>)?;
         let _ = sub_setting_i.append(&sub_item);
@@ -54,8 +64,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
 
     let tray = app.tray().expect("Failed to create tray icon");
     tray.set_menu(Some(menu.clone()))?;
-    tray.on_menu_event(move|app, event| {
-        // println!("event: {}", event.id.as_ref());
+    tray.on_menu_event(move |app, event| {
         let id_str = event.id.as_ref();
         println!("id_str: {}", id_str);
         if id_str == "check_for_updates" {
@@ -77,14 +86,12 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                 Ok(config) => config,
                 Err(e) => {
                     println!("failed to get config: {}", e);
-                    Config {
-                        time_zone: None
-                    }
+                    Config { time_zone: None }
                 }
             };
             let old_time_zone = match old_config.time_zone {
                 Some(time_zone) => time_zone,
-                None => "".to_string()
+                None => "".to_string(),
             };
             if old_time_zone == id_str {
                 return;
@@ -122,24 +129,27 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-fn update_time_zone<R: Runtime>(tray: Arc<Mutex<TrayIcon<R>>>) {
-    // Get the current time
-    let now = Utc::now();
+fn get_time_zone() -> Tz {
     let config = get_config();
     let config = match config {
         Ok(config) => config,
         Err(e) => {
             println!("failed to get config: {}", e);
-            Config {
-                time_zone: None
-            }
+            Config { time_zone: None }
         }
     };
     let time_zone = match config.time_zone {
         Some(time_zone) => time_zone,
-        None => "".to_string()
+        None => "".to_string(),
     };
     let time_zone = Tz::from_str(&time_zone).unwrap();
+    time_zone
+}
+
+fn update_time_zone<R: Runtime>(tray: Arc<Mutex<TrayIcon<R>>>) {
+    // Get the current time
+    let now = Utc::now();
+    let time_zone = get_time_zone();
     let now = now.with_timezone(&time_zone);
     // let new_york_time: DateTime<Tz> = now.with_timezone(&Tz::America__New_York);
     let format_time = now.format("%m-%d %H:%M");

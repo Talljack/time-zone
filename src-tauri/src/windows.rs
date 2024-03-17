@@ -1,7 +1,6 @@
-
+use crate::{UpdateResult, APP_HANDLE};
 use serde_json::json;
 use tauri::Manager;
-use crate::{UpdateResult, APP_HANDLE};
 use tauri_plugin_updater::UpdaterExt;
 
 #[cfg(target_os = "macos")]
@@ -32,9 +31,8 @@ pub fn post_process_window<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) 
     }
 }
 
-
 pub fn build_window<'a, R: tauri::Runtime, M: tauri::Manager<R>>(
-    builder: tauri::WebviewWindowBuilder<'a, R, M>
+    builder: tauri::WebviewWindowBuilder<'a, R, M>,
 ) -> tauri::WebviewWindow<R> {
     #[cfg(target_os = "macos")]
     {
@@ -48,11 +46,7 @@ pub fn build_window<'a, R: tauri::Runtime, M: tauri::Manager<R>>(
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let window = builder
-            .transparent(true)
-            .decorations(true)
-            .build()
-            .unwrap();
+        let window = builder.transparent(true).decorations(true).build().unwrap();
         post_process_window(&window);
         window
     }

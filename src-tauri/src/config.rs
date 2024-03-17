@@ -2,13 +2,13 @@ use parking_lot::Mutex;
 use tauri::Manager;
 use tauri::{path::BaseDirectory, AppHandle};
 
-use serde::{Deserialize, Serialize};
 use crate::APP_HANDLE;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub time_zone: Option<String>
+    pub time_zone: Option<String>,
 }
 
 static CONFIG_CACHE: Mutex<Option<Config>> = Mutex::new(None);
@@ -40,7 +40,8 @@ pub fn _get_config_by_app(app_handle: &AppHandle) -> Result<Config, Box<dyn std:
 }
 
 pub fn get_config_content_by_app(app_handle: &AppHandle) -> Result<String, String> {
-   let app_config_dir = app_handle.path()
+    let app_config_dir = app_handle
+        .path()
         .resolve("com.time-zone.dev", BaseDirectory::Config)
         .unwrap();
     if !app_config_dir.exists() {
@@ -50,7 +51,7 @@ pub fn get_config_content_by_app(app_handle: &AppHandle) -> Result<String, Strin
     if app_path.exists() {
         match std::fs::read_to_string(app_path) {
             Ok(content) => Ok(content),
-            Err(e) => Err(e.to_string())
+            Err(e) => Err(e.to_string()),
         }
     } else {
         std::fs::write(app_path, "{}").unwrap();
@@ -58,8 +59,12 @@ pub fn get_config_content_by_app(app_handle: &AppHandle) -> Result<String, Strin
     }
 }
 
-pub fn set_config_content<R: tauri::Runtime>(app_handle: &AppHandle<R>, content: Config) -> Result<String, String> {
-    let app_config_dir = app_handle.path()
+pub fn set_config_content<R: tauri::Runtime>(
+    app_handle: &AppHandle<R>,
+    content: Config,
+) -> Result<String, String> {
+    let app_config_dir = app_handle
+        .path()
         .resolve("com.time-zone.dev", BaseDirectory::Config)
         .unwrap();
     if !app_config_dir.exists() {
@@ -80,7 +85,6 @@ pub fn set_config_content<R: tauri::Runtime>(app_handle: &AppHandle<R>, content:
 pub fn clear_config_cache() {
     CONFIG_CACHE.lock().take();
 }
-
 
 #[tauri::command]
 pub fn get_config_content() -> Result<String, String> {
