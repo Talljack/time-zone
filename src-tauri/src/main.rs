@@ -1,10 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod tray;
-mod windows;
-mod utils;
 mod config;
+mod tray;
+mod utils;
+mod windows;
 
 use parking_lot::Mutex;
 // use serde_json::json;
@@ -23,7 +23,6 @@ pub struct UpdateResult {
 
 pub static UPDATE_RESULT: Mutex<Option<Option<UpdateResult>>> = Mutex::new(None);
 
-
 #[tauri::command]
 fn get_update_result() -> (bool, Option<UpdateResult>) {
     if UPDATE_RESULT.lock().is_none() {
@@ -32,9 +31,9 @@ fn get_update_result() -> (bool, Option<UpdateResult>) {
     return (true, UPDATE_RESULT.lock().clone().unwrap());
 }
 
-
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .setup(move |app| {
             let main_window = app.get_webview_window("main").unwrap();
             main_window.hide().unwrap();
