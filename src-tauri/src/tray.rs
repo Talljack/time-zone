@@ -3,7 +3,6 @@ use crate::windows::{show_updater_window, SETTINGS_WIN_NAME};
 use crate::UPDATE_RESULT;
 use chrono::{DateTime, Utc};
 use chrono_tz::{Tz, TZ_VARIANTS};
-use serde::de::value::Error;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -15,11 +14,8 @@ use tauri::{
     Runtime,
 };
 
-// const tray_time_zone: &str = "America/New_York";
-
-pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+fn create_menu<R: Runtime>(app: &tauri::AppHandle<R>, tray: &TrayIcon<R>) -> tauri::Result<()> {
     let time_zone = get_time_zone();
-    // let config = get_config().unwrap();
     let check_for_updates_i = MenuItem::with_id(
         app,
         "check_for_updates",
@@ -61,9 +57,13 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             &quit_i,
         ],
     )?;
+    let _ = tray.set_menu(Some(menu.clone()));
+    Ok(())
+}
 
+pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     let tray = app.tray().expect("Failed to create tray icon");
-    tray.set_menu(Some(menu.clone()))?;
+    let _ = create_menu(&app.clone(), &tray);
     tray.on_menu_event(move |app, event| {
         let id_str = event.id.as_ref();
         println!("id_str: {}", id_str);
@@ -96,7 +96,6 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             if old_time_zone == id_str {
                 return;
             }
-
             let new_config = Config {
                 time_zone: Some(id_str.to_string()),
             };
@@ -107,10 +106,12 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             let _ = app.tray().unwrap().set_title(Some(format_time.to_string()));
             if let Err(e) = set_config_content(app, new_config) {
                 println!("set config failed: {}", e);
+            } else {
+                let _ = create_menu(&app.clone(), &app.tray().unwrap());
             }
         }
     });
-    tray.on_tray_icon_event(|tray, event| {
+    tray.on_tray_icon_event(| tray, event| {
         if event.click_type == ClickType::Left {
             let app = tray.app_handle();
             if let Some(window) = app.get_webview_window(SETTINGS_WIN_NAME) {
